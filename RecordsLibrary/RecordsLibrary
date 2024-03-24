@@ -1,4 +1,5 @@
 #! /bin/bash
+
 #-------------------------OptionsNumber--------------------------
 OptionsNumber() {
 local optionsnumber=$(( $(echo $@ | wc -c)/2 ))
@@ -74,8 +75,6 @@ sed -i "/$wholeline/d" $file
 AddRecordtoLib() {
 echo "$@" >> $file
 echo "$@ Added to library"
-echo -e "-----------------------\nWhat would you like to do next?"
-MainMenu
 }
 #----------------------ExtractName---------------------------
 ExtractName() {
@@ -100,6 +99,7 @@ echo $copies
 #----------------------RecNameValidity---------------------------
 RecNameValidity() {
 local name=($(ExtractName "$@"))
+local copies=$(ExtractCopies "$@")
 local valid="Valid"
 for i in ${name[@]}
 do
@@ -108,13 +108,17 @@ do
 		valid="NotValid"
 	fi
 done
+if [[ ! $copies =~ ^[0-9]+$ ]]
+then
+	valid="NotValid"
+fi
 echo $valid
 }
 #--------------------ExternalFileValidity-------------------------
 ExternalFileValidity() {
-if [ ! -f "$1" ] || [ ! -w "$1" ]
+if [ ! -f "$2" ] || [ ! -w "$2" ]
 then
-	echo "File is not found or not writable. please make sure its created and write permitted"
+	echo "$1 file is not found or not writable. please make sure its created and write permitted"
 	exit
 fi
 }
@@ -144,6 +148,67 @@ else
 	echo "$optionnumber)Delete All?"
 fi
 }
+#---------------------PrintandOptions----------------------------
+PrintandOptions() {
+local AddorUpdate=$1
+shift 1
+local recordname=$(ExtractName $@)
+local copies=$(ExtractCopies $@)
+local Rows=($(FindRowNumbers $recordname))
+local optionsnumber=$(OptionsNumber ${Rows[@]})
+local origoption=$(CheckOriginalOption $recordname)
+local origoptionnum=$(( $optionsnumber+1 ))
+option=0
+if [ "$AddorUpdate" = "A" ]
+then
+	if [ "$origoption" = "N" ] && [ $optionsnumber -eq "1" ]
+	then
+		local existingcopies=$(sed -n ${Rows}p $file | awk -F ',' '{print $2}')
+                copies=$(( $copies + $existingcopies ))
+                UpdateRecord "$recordname,$existingcopies" $copies
+	else
+		Print M ${Rows[@]}
+		if [ "$origoption" = "Y" ]
+        	then
+                	PrintorDelOriginal A $origoptionnum $recordname
+                	optionsnumber=$origoptionnum
+        	fi
+                option=$(Options $optionsnumber)
+	fi
+else
+	if [ $optionsnumber -eq "1" ] && [ "$origoption" = "N" ]
+	then
+		local existingcopies=$(sed -n ${Rows}p $file | awk -F ',' '{print $2}')
+        	if [ "$AddorUpdate" = "D" ]
+	        then
+        	copies=$(( 0-$copies ))
+                copies=$(( $copies+$existingcopies ))
+		fi
+                UpdateRecord "$recordname,$existingcopies" $copies
+	else
+        Print M ${Rows[@]}
+	local option=$(Options $optionsnumber)
+	fi
+fi
+if [ $option -eq $origoptionnum ] && [ "$AddorUpdate" = "A" ] && [ "$origoption" = "Y" ]
+then
+        AddRecordtoLib $@
+elif [ $option -ne "0" ]
+then
+        local rowindex=$( echo ${Rows[$(( $option-1 ))]} )
+        local choice=$(sed -n ${rowindex}p $file | awk -F ',' '{print $1}')
+        local existingcopies=$(sed -n ${rowindex}p $file | awk -F ',' '{print $2}')
+        if [ "$AddorUpdate" = "D" ]
+        then
+               copies=$(( 0 - $copies ))
+               copies=$(( $copies + $(sed -n ${rowindex}p $file | awk -F ',' '{print $2}') ))
+        elif [ "$AddorUpdate" = "A" ]
+        then
+               copies=$(( $copies+$existingcopies ))
+        fi
+        UpdateRecord "$choice,$existingcopies" $copies
+fi
+}
 #----------------------CheckRecStatus----------------------------
 CheckRecStatus() {
 local AddorUpdate=$1
@@ -157,65 +222,12 @@ then
 	if [ "$AddorUpdate" = "A" ]
 	then
 		AddRecordtoLib $@
-		#Success
-		#Menu
 	else
-		echo "wrong name cannot complete your request"
+		echo "Wrong name cannot complete your request, please make sure you're inserting the right name."
+		status="Failure"
 	fi
-	exit #have to remove later
 else
-	local optionsnumber=$(OptionsNumber ${Rows[@]})
-	local origoption=$(CheckOriginalOption $recordname)
-	local origoptionnum=$(( $optionsnumber+1 ))
-	if [ "$AddorUpdate" = "A" ]
-	then
-		if [ "$origoption" = "Y" ]
-		then
-			Print M ${Rows[@]}
-			PrintorDelOriginal A $origoptionnum $recordname
-			optionsnumber=$origoptionnum
-		elif [ $optionsnumber -ne "1" ]
-		then
-			Print M ${Rows[@]}
-		else
-			local existingcopies=$(sed -n ${Rows}p $file | awk -F ',' '{print $2}')
-			copies=$(( $copies + $existingcopies ))
-			UpdateRecord "$recordname,$existingcopies $copies"
-		fi
-	elif [ $optionsnumber -eq 1 ] && [ "$origoption" = "N" ]
-	then
-		local existingcopies=$(sed -n ${Rows}p $file | awk -F ',' '{print $2}')
-		if [ "$AddorUpdate" = "U" ]
-		then
-			UpdateRecord "$recordname,$existingcopies" $copies
-		else
-			copies=$(( 0-$copies ))
-			copies=$(( $copies+$existingcopies ))
-			echo $copies
-			UpdateRecord "$recordname,$existingcopies" $copies
-		fi
-	else
-		Print M ${Rows[@]}
-	fi
-
-	local option=$(Options $optionsnumber)
-	if [ $option -eq $origoptionnum ]
-	then
-		AddRecordtoLib $@
-	else
-		local rowindex=$( echo ${Rows[$(( $option-1 ))]} )
-		local choice=$(sed -n ${rowindex}p $file | awk -F ',' '{print $1}')
-		local existingcopies=$(sed -n ${rowindex}p $file | awk -F ',' '{print $2}')
-		if [ "$AddorUpdate" = "D" ]
-                then
-                        copies=$(( 0 - $copies ))
-			copies=$(( $copies + $(sed -n ${rowindex}p $file | awk -F ',' '{print $2}') ))
-                elif [ "$AddorUpdate" = "A" ]
-		then
-			copies=$(( $copies+$existingcopies ))
-		fi
-		UpdateRecord "$choice,$existingcopies" $copies
-	fi
+	PrintandOptions $AddorUpdate $@
 fi
 }
 #-----------------------UpdateRecord-----------------------------
@@ -225,7 +237,7 @@ local existingcopies=$(ExtractCopies $1)
 if [ $2 -lt "0" ]
 then
 	echo "There is no enough copies in the library to complete your request, sorry."
-	echo "Menu"
+	status="Failure"
 elif [ $2 -eq "0" ]
 then
 	DeleteRecordfromLib $1
@@ -236,8 +248,36 @@ else
 	sed -i "s/$old/$new/g" $file
 	echo "The new number of copies of the $recordname record is $2."
 fi
-echo -e "-----------------------\nWhat would you like to do next?"
-MainMenu
+}
+#---------------------UpdateRecordName----------------------------
+UpdateRecordName() {
+local old
+local new
+read -p "Please enter the record's name you want to rename: " old
+local namevalidity=$(RecNameValidity $line)
+if [ "$namevalidity" = "NotValid" ]
+then
+        echo "Record's name or copies is not valid. please make sure you're entering a legal name and copies."
+	status="Failure"
+else
+	local Rows=($(FindRowNumbers $old))
+	local optionsnumber=$(OptionsNumber ${Rows[@]})
+	if [ $optionsnumber -gt 1 ] || [ $(CheckOriginalOption $old) = "Y" ]
+	then
+	        Print M ${Rows[@]}
+	        local option=$(Options $optionsnumber)
+	        local rowindex=$( echo ${Rows[$(( $option-1 ))]} )
+	        old=$(sed -n ${rowindex}p $file | awk -F ',' '{print $1}')
+	elif [ -z $Rows ]
+	then
+	        echo "There is not such file in the library, please make sure you're inserting the right name (or part of it)"
+		status="Failure"
+	else
+		read -p "Please enter the record's new name: " new
+		sed -i "s/$old/$new/g" $file
+		echo "The new name of $old record is $new."
+	fi
+fi
 }
 #-------------------------AddRecord------------------------------
 AddRecord() {
@@ -246,12 +286,11 @@ read -p "Please enter a record name and copies in this format Name,Copies: " lin
 local namevalidity=$(RecNameValidity $line)
 if [ "$namevalidity" = "NotValid" ]
 then
-	echo "Record name is not valid. please make sure you're entering a legal name."
-	echo -n "Going back to menu\n"
-	echo -e "-----------------------\nWhat would you like to do next?"
-	MainMenu
+        echo "Record's name or copies is not valid. please make sure you're entering a legal name and copies."
+	status="Failure"
+else
+	CheckRecStatus A $line
 fi
-CheckRecStatus A $line
 }
 #---------------------DeleteRecfromLib---------------------------
 DeleteRecord() {
@@ -260,12 +299,12 @@ read -p "Please enter a record name and copies in this format Name,Copies: " lin
 local namevalidity=$(RecNameValidity $line)
 if [ "$namevalidity" = "NotValid" ]
 then
-        echo "Record name is not valid. please make sure you're entering a legal name."
-        echo "GoBackToMenu"
-        exit
+        echo "Record's name or copies is not valid. please make sure you're entering a legal name and copies."
+	status="Failure"
+else
+	echo -e "Please wait deleting...\nHere is the search results\n"
+	CheckRecStatus D $line
 fi
-echo -e "Please wait deleting...\nHere is the search results\n"
-CheckRecStatus D $line
 }
 #------------------------UpdateRecord-----------------------------
 UpdateRecordCopies() {
@@ -274,12 +313,12 @@ read -p "Please enter a record name and copies in this format Name,Copies: " lin
 local namevalidity=$(RecNameValidity $line)
 if [ "$namevalidity" = "NotValid" ]
 then
-        echo "Record name is not valid. please make sure you're entering a legal name."
-        echo "GoBackToMenu"
-        exit
+        echo "Record's name or copies is not valid. please make sure you're entering a legal name and copies."
+	status="Failure"
+else
+	echo -e "Please wait while updating...\nHere is the update results\n"
+	CheckRecStatus U $line
 fi
-echo -e "Please wait while updating...\nHere is the update results\n"
-CheckRecStatus U $line
 }
 #-----------------------SearchRecord-----------------------------
 Search() {
@@ -287,28 +326,58 @@ local line
 read -p "Please enter a record name: " line
 echo -e "Please wait while searching...\nHere is the search results\n"
 local Rows=($(FindRowNumbers $line))
-Print MA ${Rows[@]}
-echo -e "-----------------------\nWhat would you like to do next?"
+if [ -z $Rows ]
+then
+	echo "There is no records in the library which matches your search"
+else
+	Print MA ${Rows[@]}
+fi
 }
 #----------------------NumberOfRecords---------------------------
 NumOfRecords() {
 echo -n "The total number of records in the library is: "
 cat $file | wc -l
-echo -e "-----------------------\nWhat would you like to do next?"
 }
 #-----------------------SortedLibrary----------------------------
 SortedLibrary() {
 cat $file | sort
-echo -e "-----------------------\nWhat would you like to do next?"
 }
-#---------------------DeleteRecfromLib---------------------------
+#---------------------------Logfile------------------------------
+Logfile() {
+echo "-----------------------------------------------------------"
+local option
+now=$(date)
+case $1 in
+                1)
+                        option="Insert";;
+                2 | delete)
+                        option="Delete";;
+                3 | search)
+                        option="Search";;
+                4 | "update name")
+                        option="UpdateName";;
+                5 | "update copies")
+                        option="UpdateAmount";;
+                6 | "print records num")
+                        option="PrintAmount";;
+                7 | "print sorted")
+                        option="PrintAll";;
+		8 )
+			exit;;
+                esac
+echo -e "$now $option $2" >> $logfile
+echo "Going back to main menu"
+echo -e "-----------------------------------------------------------\nWhat would you like to do next?"
+}
+#--------------------------MainMenu------------------------------
 MainMenu() {
-	echo -e "-----------------------\nWelcome to the record library\nWhat would like to do?"
+	echo -e "-----------------------------------------------------------\nWelcome to the record library\nWhat would like to do?"
         while [ 0 ]
         do
-                echo -e "1)Add record to library\n2)Delete record from library\n3)Search for record (by name)\n4)Update record name\n5)Update record copies\n6)Print records number in the library\n7)Print sorted records in the library\n8)Exit\n-----------------------\n"
+		status="Success"
+                echo -e "1)Add record to library\n2)Delete record from library\n3)Search for record (by name)\n4)Update record name\n5)Update record copies\n6)Print records number in the library\n7)Print sorted records in the library\n8)Exit\n\n"
                 read -p "Please insert the action number: " option
-                echo "-----------------------"
+                echo "-----------------------------------------------------------"
                 case $option in
                 1 | add)
                         AddRecord;;
@@ -317,7 +386,7 @@ MainMenu() {
                 3 | search)
                         Search;;
                 4 | "update name")
-                        echo "Updaterecordname";;
+                        UpdateRecordName;;
                 5 | "update copies")
 			UpdateRecordCopies;;
                 6 | "print records num")
@@ -325,49 +394,20 @@ MainMenu() {
                 7 | "print sorted")
                         SortedLibrary;;
                 8 | exit )
-                        exit;;
+                        echo "It was nice having you here and thank you for visting our records library:)";;
                 *)
                         echo "Invalid option"
                         ;;
                 esac
-        done
+	Logfile $option $status
+	done
 }
 #--------------------------------------------------------------
 
-
-#testing
 file="$1"
+logfile="$2"
+ExternalFileValidity RecordsLibrary $file
+ExternalFileValidity Log $logfile
+echo > $logfile
 MainMenu
-#echo $file
-#Print N
-#echo
-#newline="Slim Shady EP,97"
-#newline="Re,10"
-#name=$(ExtractName $newline)
-#copies=$(ExtractCopies $newline)
-#AddRecordtoLib $name $copies
-#echo
-#Print N
-#ExternalFileValidity $file
-#name=$(RecNameValidity $newline)
-#echo "${name[@]}"
-#CheckRecStatus ${name[@]}
-#read -p "insert: " option
-#echo ${option[@]}
-#PrintorDelOriginal ${option[@]}
-#FindRowNumbers $option
-#CheckOriginalOption $option
-#CheckRecStatus A Re
-#Rows=(1 2 4 5 6)
-#echo ${Rows[@]}
-#option=3
-#echo ${Rows[0]}
-#echo ${Rows[$(( $option-1 ))]}
-#echo ${Rows[@]} | awk -v op=$option -F ' ' '{print $op}'
-#CheckRecStatus D MTMB
-#AddRecord $option
-#SortedLibrary
-#echo
-#CheckRecStatus $option
-#NumOfRecords
-#UpdateRecord Encore 20
+
