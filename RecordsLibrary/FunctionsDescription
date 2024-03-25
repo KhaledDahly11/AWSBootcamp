@@ -1,0 +1,253 @@
+This file contains the functions description in "RecordsLibrary" project
+
+
+
+
+Global Variables in project : 
+1. file = main record library file
+2. log file = log file of the project
+3. log file status = the status of the current running operation
+
+
+
+
+Function Name : MainMenu
+Input : 
+Output : Menu contains the operations we can do in the library
+Description : We call this function with no external arguments and we get the main menu back
+
+
+
+
+Function Name : AddRecord
+Input : 
+Output : 
+Description : This is the main "AddRecord" function. the first thing it does is asking for a line
+                containing the record name and copies check that the name and copies is legal
+                using "RecNameValidity", in case the're not legal, we get a message saying that 
+                the name or copies is illegal.
+                else, we continue with the flow, calling "CheckRecStatus" which is a big role
+                function in my code which checks the status of the record name according to the 
+                selected operation.
+                In case of success/failure we get appropiate message from the inner function of
+                "CheckRecStatus".
+
+
+
+
+Function Name : DeleteRecord
+Input :
+Output :
+Description : This is the main "DeleteRecord" function. the first thing it does is asking for a line 
+		containing the record name and copies check that the name and copies is legal
+		using "RecNameValidity", in case the're not legal, we get a message saying that
+		the name or copies is illegal.
+		else, we continue with the flow, calling "CheckRecStatus" which is a big role
+		function in my code which checks the status of the record name according to the 
+		selected operation.
+                In case of success/failure we get appropiate message from the inner function of
+                "CheckRecStatus".
+
+
+
+
+
+Function Name :UpdateRecord
+Input :
+Output :
+Description : This is the main "UpdateRecord" function. the first thing it does is asking for a lin>
+                containing the record name and copies check that the name and copies is legal
+                using "RecNameValidity", in case the're not legal, we get a message saying that 
+                the name or copies is illegal.
+                else, we continue with the flow, calling "CheckRecStatus" which is a big role
+                function in my code which checks the status of the record name according to the 
+                selected operation.
+                In case of success/failure we get appropiate message from the inner function of
+                "CheckRecStatus".
+
+
+
+
+
+Function Name : RecNameValidity
+Input : line containing the record name and copies           
+Output : "Valid"/"NotValid"
+Description : This function checks if the name and copies are valid
+
+
+
+Function Name : ExternalFileValidity
+Input : line containing the filename
+Output : nothing if the file is found and writable, an error and exit message in case the file
+	 is not found/writable                                   
+Description : This function checks if the RecordsLibrary and Log file are found and writable
+
+
+
+
+Function Name : CheckRecStatus
+Input : 1.Operation letter : 1.1."A" for add recrod 1.2."U" for update 1.3. "D" for delete
+	2.line contains the recordname and copies in the format "Name,Copies"
+Output : the output of this function mainly depends on the inner functions it calls.
+	 but in case of Update or Delete operation an no matches at all we get a failure message
+	 directly from the "CheckRecStatus" function
+Description : In this function we stand at the crossroads in which we decide what we do next.
+		the first thing we try to find a exact match or no-exact matches of the record
+		name, and according to this results we decide what to do next:
+		*Note: the result of matches search is put in "Rows" variable.
+		1.Incase of empty Rows (no match) and:
+			1.1 the selected operation is add, we add the record to the libray
+			1.2 the selected operation is update/delete, we return a failed message
+		2.Incase of size of "Rows" is 1 (one exact match) and:
+			2.1 add operation, we sum the exisiting copes and the added copies
+			2.2 update operation, we substitue the existing copies with the copies
+			2.3 delete operation, we subtract the copies from the exisitng copies
+		3.Incase of size of "Rows is 1 and the match is not the exact input name we get
+			a menu containing the only match to make sure this is the record name 
+			we want.
+		4.Incase of more than one match we get a menu to choose from.
+			(*Note: in the add operation we get an aditional option of the inserted
+				record name)
+
+
+		the CheckRecStatus function depending on the selected operation and the matches
+		search results calls one of the functions:
+		1. AddRecotdtoLib
+		2. PrintandOptions
+
+
+
+
+Function Name : ExtractName
+Input : line containing the record name and copies
+Output : record name                     
+Description : This function extracts the records name
+
+
+Function Name : ExtractCopies
+Input : line containing the record name and copies
+Output : record copies
+Description : This function extracts the records copies
+
+
+
+
+Function Name : PrintandOptions
+Input : 1.Operation letter (the same options as "CheckRecStatus" function
+	2.Line containing the record name and copies
+Output : the output of this function mainly depends on the inner functions it calls.
+Description : this function gets called when there is more than one option and we have to print
+		a menu to select from. if the original file name is not matching exactly to one of
+		the options (we do this check with "CheckOriginalOption" function), we add another
+		option to the menu using "PrintorDelOriginal" function.
+		after the menu is printed the user is asked to choose one option to procced with
+		the selected operation.
+		after a selection is made we send the selected record name to "UpdateRecord" func
+
+
+
+
+
+
+Function Name : Print    
+Input : 1.print option : 1.1 "N" - no option = default printing of file (AllFilePrinter function 
+                                   with "N" option)
+			 1.2 "S" - sorted = sorted printing of the file (AllFilePrinter function
+				   with "S" option)
+			 1.3 "M" - Menu print (calls SpecificLinesPrinter function)
+	2.Rows array : contains the rows of the matches for "Menu" (1.3) option
+Output : File/Menu Printed to terminal       
+Description : this function is called with a printing option an then prints the file/menu
+
+
+
+
+Function Name : SpecificLinesPrinter
+Input : 1.print option (M) 2.Rows of matches
+Output : Menu printed
+Description : this function is called with a rows numbers and prints a menu
+
+
+
+Function Name : AllFilePrinter
+Input : 1.print option: 1.1 "N" - default printing of file 1.2 "S" - sorted printing of file
+Output : file printed                 
+Description : this function is called with a printing option and prints the file in desired way    
+
+
+
+
+Function Name : Options
+Input : Number of options in menu
+Output : selected option
+Description : this function makes sure we select an valid option of menu
+
+
+
+
+
+Function Name : CheckOriginalOption
+Input : line containing the record name           
+Output : "Y" to add another option to the menu, "N" for no need to add another option
+Description : This function checks if one of the matches is the exact record name we entered
+
+
+
+
+
+Function Name : PrintorDelOrig
+Input : line containing the record name
+Output : Added option to the menu containing the record name we entered
+Description : This function simply adds the record name as an option to the menu    
+
+
+
+
+
+Function Name : AddRecordtoLib
+Input : line containing the record name and copies
+Output : success message with the record name and copies that was added
+Description : This function simply adds the record name and copies to the file
+
+
+
+
+
+Function Name : AddRecordtoLib
+Input : line containing the record name and copies
+Output : success message with the record name and copies that was added
+Description : This function simply adds the record name and copies to the file    
+
+
+
+
+
+Function Name : UpdateRecordCopies
+Input : 
+Output :
+Description :   the first thing it does is asking for a line containing the record name and copies
+		check that the name and copies is legal and then it updates the copies
+
+
+
+
+Function Name : UpdateRecordName
+Input : 
+Output :
+Description :   the first thing it does is asking for a record name checks that it is found in
+		the library and then asks for a new name and updates
+
+
+
+
+Function Name : NumOfRecords
+Input :
+Output : number of records in the library
+Description : prints the number of records in the library
+
+
+
+Function Name : PrintSorted
+Input :
+Output : sorted file
+Description :   prints the library in sorted way
