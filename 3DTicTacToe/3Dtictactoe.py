@@ -33,7 +33,6 @@ while(1):
         GridArray.append([' ',' ',' ',' ',' ',' ',' ',' ',' '])
         #instructions
         print ("The game rules:\n*You can enter a grid number between 0-2\n*You can enter a square number between 0-8\nHere is the grids numbered printed")
-        printinstructions()
         #Players initilaization
         P1=input("Please enter the first player name who will use 'X': ")
         P2=input("Please enter the second player name who will use 'O': ")
